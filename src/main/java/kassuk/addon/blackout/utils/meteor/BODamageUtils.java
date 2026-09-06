@@ -9,7 +9,6 @@ import kassuk.addon.blackout.utils.OLEPOSSUtils;
 import kassuk.addon.blackout.utils.SettingUtils;
 import meteordevelopment.meteorclient.MeteorClient;
 import meteordevelopment.meteorclient.events.game.GameJoinedEvent;
-import meteordevelopment.meteorclient.mixininterface.IExplosion;
 import meteordevelopment.meteorclient.mixininterface.IRaycastContext;
 import meteordevelopment.meteorclient.mixininterface.IVec3d;
 import meteordevelopment.meteorclient.utils.PreInit;
