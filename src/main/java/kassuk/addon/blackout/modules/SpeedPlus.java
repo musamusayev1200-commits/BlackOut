@@ -17,10 +17,6 @@ import net.minecraft.network.packet.s2c.play.PlayerPositionLookS2CPacket;
 import net.minecraft.registry.tag.FluidTags;
 import net.minecraft.util.math.BlockPos;
 
-/**
- * @author OLEPOSSU
- */
-
 public class SpeedPlus extends BlackOutModule {
     public SpeedPlus() {
         super(BlackOut.BLACKOUT, "Speed+", "Speeeeeeeed.");
@@ -29,7 +25,6 @@ public class SpeedPlus extends BlackOutModule {
     private final SettingGroup sgGeneral = settings.getDefaultGroup();
     private final SettingGroup sgPause = settings.createGroup("Pause");
 
-    //--------------------General--------------------//
     private final Setting<SpeedMode> mode = sgGeneral.add(new EnumSetting.Builder<SpeedMode>()
         .name("Mode")
         .description("Mode for speed.")
@@ -97,7 +92,6 @@ public class SpeedPlus extends BlackOutModule {
         .build()
     );
 
-    //--------------------Pause--------------------//
     private final Setting<Boolean> pauseSneak = sgPause.add(new BoolSetting.Builder()
         .name("Pause Sneak")
         .description("Doesn't modify movement while sneaking.")
@@ -147,8 +141,8 @@ public class SpeedPlus extends BlackOutModule {
     private void onKB(PacketEvent.Receive event) {
         if (mc.player != null && mc.world != null) {
             if (knockBack.get() && event.packet instanceof EntityVelocityUpdateS2CPacket packet && packet.getEntityId() == mc.player.getId()) {
-                double x = packet.getVelocityX() / 8000f;
-                double z = packet.getVelocityZ() / 8000f;
+                double x = packet.getVelocityX() / 8000.0;
+                double z = packet.getVelocityZ() / 8000.0;
                 velocity = Math.max(velocity, Math.sqrt(x * x + z * z) * kbFactor.get());
             }
             if (rbReset.get() && event.packet instanceof PlayerPositionLookS2CPacket) {
@@ -160,55 +154,31 @@ public class SpeedPlus extends BlackOutModule {
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onMove(PlayerMoveEvent event) {
         if (mc.player != null && mc.world != null) {
-            if (Modules.get().get(HoleSnap.class).isActive()) {
-                return;
-            }
-            if (pauseSneak.get() && mc.player.isSneaking()) {
-                return;
-            }
-            if (pauseElytra.get() && mc.player.isFallFlying()) {
-                return;
-            }
-            if (pauseFly.get() && mc.player.getAbilities().flying) {
-                return;
-            }
+            if (Modules.get().get(HoleSnap.class).isActive()) return;
+            if (pauseSneak.get() && mc.player.isSneaking()) return;
+            if (pauseElytra.get() && mc.player.getShoulderEntityLeft() != null) return;
+            if (pauseFly.get() && mc.player.getAbilities().flying) return;
 
             switch (pauseWater.get()) {
-                case Touching -> {
-                    if (mc.player.isTouchingWater()) return;
-                }
-                case Submerged -> {
-                    if (mc.player.isSubmergedIn(FluidTags.WATER)) return;
-                }
-                case Both -> {
-                    if (mc.player.isTouchingWater() || mc.player.isSubmergedIn(FluidTags.WATER)) return;
-                }
+                case Touching -> { if (mc.player.isTouchingWater()) return; }
+                case Submerged -> { if (mc.player.isSubmergedIn(FluidTags.WATER)) return; }
+                case Both -> { if (mc.player.isTouchingWater() || mc.player.isSubmergedIn(FluidTags.WATER)) return; }
             }
 
             switch (pauseLava.get()) {
-                case Touching -> {
-                    if (mc.player.isInLava()) return;
-                }
-                case Submerged -> {
-                    if (mc.player.isSubmergedIn(FluidTags.LAVA)) return;
-                }
-                case Both -> {
-                    if (mc.player.isInLava() || mc.player.isSubmergedIn(FluidTags.LAVA)) return;
-                }
+                case Touching -> { if (mc.player.isInLava()) return; }
+                case Submerged -> { if (mc.player.isSubmergedIn(FluidTags.LAVA)) return; }
+                case Both -> { if (mc.player.isInLava() || mc.player.isSubmergedIn(FluidTags.LAVA)) return; }
             }
 
             double forward = mc.player.input.movementForward;
             double sideways = mc.player.input.movementSideways;
-
             double yaw = getYaw(forward, sideways);
 
             if (mode.get() == SpeedMode.CCStrafe && (!onlyPressed.get() || strafeBind.get().isPressed())) {
                 if (jumpPhase == 4) {
                     velocity *= 0.9888888889;
-
-                    if (mc.player.isOnGround()) {
-                        jumpPhase = 1;
-                    }
+                    if (mc.player.isOnGround()) jumpPhase = 1;
                 }
                 if (jumpPhase == 3) {
                     velocity = velocity + (0.2873 - velocity) * 0.6;
@@ -225,15 +195,11 @@ public class SpeedPlus extends BlackOutModule {
                         jumpPhase = 2;
                     }
                 }
-
                 velocity = Math.max(velocity, 0.2873);
-            } else
-                velocity = Math.max(speed.get(), velocity * 0.98);
+            } else velocity = Math.max(speed.get(), velocity * 0.98);
 
             double motion = velocity;
-            if (velocity < 0.01) {
-                motion = 0;
-            }
+            if (velocity < 0.01) motion = 0;
             if (mc.player.hasStatusEffect(StatusEffects.SPEED)) {
                 motion *= 1.2 + mc.player.getStatusEffect(StatusEffects.SPEED).getAmplifier() * 0.2;
             }
@@ -255,12 +221,10 @@ public class SpeedPlus extends BlackOutModule {
                 }
                 case Accelerate -> {
                     acceleration = Math.min(1, (move ? acceleration + (mc.player.isOnGround() || airStrafe.get() ? accelerationAmount.get() / 10 : 0.02) : acceleration) * slipperiness(move));
-
                     if ((move && mc.player.isOnGround()) || airStrafe.get()) {
                         ax = x;
                         az = z;
                     }
-
                     ((IVec3d) event.movement).setXZ(speed.get() * ax * acceleration, speed.get() * az * acceleration);
                 }
             }
@@ -268,10 +232,8 @@ public class SpeedPlus extends BlackOutModule {
     }
 
     private double slipperiness(boolean moving) {
-        if (moving) {
-            return 1;
-        }
-        return mc.player.isOnGround() ? mc.world.getBlockState(new BlockPos((int) mc.player.getX(), (int) Math.ceil(mc.player.getY() - 1), (int) mc.player.getZ())).getBlock().getSlipperiness() : 0.98;
+        if (moving) return 1;
+        return mc.player.isOnGround() ? mc.world.getBlockState(new BlockPos((int) mc.player.getX(), (int) Math.ceil(mc.player.getY() - 1), (int) mc.player.getZ())).getBlock().getSlipperiness() : 0.6;
     }
 
     private double getYaw(double f, double s) {
@@ -289,16 +251,6 @@ public class SpeedPlus extends BlackOutModule {
         return yaw;
     }
 
-    public enum SpeedMode {
-        CCStrafe,
-        Instant,
-        Accelerate
-    }
-
-    public enum LiquidMode {
-        Disabled,
-        Submerged,
-        Touching,
-        Both
-    }
+    public enum SpeedMode { CCStrafe, Instant, Accelerate }
+    public enum LiquidMode { Disabled, Submerged, Touching, Both }
 }
